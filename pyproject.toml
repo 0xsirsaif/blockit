@@ -64,7 +64,7 @@ dependencies = [
 ]
 
 [project.scripts]
-appins = "blockit.cli:app"
+blockit = "blockit.cli:app"
 
 [project.optional-dependencies]
 dev = [

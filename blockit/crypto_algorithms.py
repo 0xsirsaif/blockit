@@ -1,6 +1,5 @@
 import array
 import string
-import sys
 from abc import ABC, abstractmethod
 
 
@@ -727,28 +726,5 @@ class CryptoAlgorithmFactory:
             return ShiftEncryption(shift)
         elif algorithm_name == "matrix":
             return MatrixEncryption()
-
-
-def main():
-    if len(sys.argv) < 4:
-        print("Usage: lockit <str> <crypto-algorithm> <encrypt or decrypt>")
-        return
-
-    text = sys.argv[1]
-    algorithm_name = sys.argv[2]
-    operation = sys.argv[3]
-    kwargs = {str(sys.argv[i]): sys.argv[i + 1] for i in range(4, len(sys.argv) - 1)}
-
-    crypto_algorithm = CryptoAlgorithmFactory.create_algorithm(algorithm_name, **kwargs)
-    if operation == "encrypt":
-        encrypted_text = crypto_algorithm.encrypt(text)
-        print(f"Encrypted text: {encrypted_text}")
-    elif operation == "decrypt":
-        decrypted_text = crypto_algorithm.decrypt(text)
-        print(f"Decrypted text: {decrypted_text}")
-    else:
-        print("Invalid operation. Use 'encrypt' or 'decrypt'")
-
-
-if __name__ == "__main__":
-    main()
+        else:
+            raise ValueError(f"Invalid algorithm name: {algorithm_name}")
