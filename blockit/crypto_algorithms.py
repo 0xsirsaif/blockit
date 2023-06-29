@@ -1,4 +1,5 @@
 import array
+import string
 import sys
 from abc import ABC, abstractmethod
 
@@ -36,19 +37,19 @@ class ShiftEncryption(CryptoAlgorithm):
         'Khoor Zruog!'
         >>> shift_3_encryption.apply_shift_cipher("Khoor Zruog!", "decrypt")
         'Hello World!'
-        >>> shift_3_encryption.apply_shift_cipher("ZZZZZZZ", "encrypt")
-        CCCCCCC
+        >>> shift_3_encryption.apply_shift_cipher("ZZZZZZ", "encrypt")
+        'CCCCCC'
         >>> shift_3_encryption.apply_shift_cipher("CCCCCC", "decrypt")
-        ZZZZZZ
+        'ZZZZZZ'
         >>> shift_4_encryption = ShiftEncryption(shift=4)
         >>> shift_4_encryption.apply_shift_cipher("Hello World!", "encrypt")
         'Lipps Asvph!'
         >>> shift_4_encryption.apply_shift_cipher("Lipps Asvph!", "decrypt")
         'Hello World!'
-        >>> shift_4_encryption.apply_shift_cipher("ZZZZZZZ", "encrypt")
-        DDDDDDD
-        >>> shift_4_encryption.apply_shift_cipher("DDDDDDD", "decrypt")
-        ZZZZZZZ
+        >>> shift_4_encryption.apply_shift_cipher("ZZZZZZ", "encrypt")
+        'DDDDDD'
+        >>> shift_4_encryption.apply_shift_cipher("DDDDDD", "decrypt")
+        'ZZZZZZ'
         """
         chars: list = []
         for char in text:
@@ -603,6 +604,7 @@ class MatrixEncryption(CryptoAlgorithm):
             -0.120402896064248,
         ],
     ).tobytes()
+    upper_case_alphabet: str = string.ascii_uppercase
 
     def __init__(self):
         # The key and inverse key are initialized using a memoryview object to avoid unnecessary data copying.
@@ -617,48 +619,41 @@ class MatrixEncryption(CryptoAlgorithm):
 
         To run the doctests: pytest --doctest-modules -vvs <filename>.py
 
-        >>> self.padding_out_text("HELLO")
-        "HELLOXXXXXXXXXXX"
-        >>> self.padding_out_text("HELLOXXXXXXXXXXX")
-        "HELLOXXXXXXXXXXX"
+        >>> MatrixEncryption().padding_out_text("HELLO")
+        'HELLOXXXXXXXXXXX'
+        >>> MatrixEncryption().padding_out_text("HELLOXXXXXXXXXXX")
+        'HELLOXXXXXXXXXXX'
         """
-        padding_size: int = self.digraph_size - (len(plaintext) % self.digraph_size)
+        padding_size: int = (
+            self.digraph_size - (len(plaintext) % self.digraph_size) if len(plaintext) % self.digraph_size != 0 else 0
+        )
         return plaintext + "X" * padding_size
 
-    @staticmethod
-    def convert_to_vector(digraph_plaintext: str) -> list:
+    def convert_to_vector(self, digraph_plaintext: str) -> list[list]:
         """
         Convert the digraph plaintext to a vector of ASCII values.
-
-        >>> MatrixEncryption.convert_to_vector("HELLO")
-        [72, 69, 76, 76, 79, 88, 88, 88, 88, 88, 88, 88, 88, 88, 88, 88]
         """
-        return [ord(char) for char in digraph_plaintext]
+        return [[self.upper_case_alphabet.index(char) for char in digraph_plaintext]]
 
-    @staticmethod
-    def convert_to_block(digraph_vector: list) -> str:
+    def convert_to_block(self, digraph_vector: list[list]) -> str:
         """
         Convert the digraph vector to a string of characters.
-
-        >>> MatrixEncryption.convert_to_block([23, 5, 19, 7, 8, 15, 20, 12, 15, 24, 8, 6, 25, 0, 1, 23])
-        "XFTHIPUMPYIGZABX"
         """
-        return "".join([chr(val + ord("A")) for val in digraph_vector])
+        return "".join([self.upper_case_alphabet[int(val)] for val in digraph_vector[0]])
 
-    def matrix_multiply(self, digraph_vector: list, matrix: list[list]) -> list:
+    def matrix_multiply(self, digraph_vector: list[list], matrix: list[list]) -> list:
         """
         Multiply the digraph vector by the matrix (either the key or inverse key)
-
-        >>> self.matrix_multiply([72, 69, 76, 76, 79, 88, 88, 88, 88, 88, 88, 88, 88, 88, 88, 88], self.key)
-        [23, 5, 19, 7, 8, 15, 20, 12, 15, 24, 8, 6, 25, 0, 1, 23]
-        >>> self.matrix_multiply([88, 70, 84, 72, 73, 80, 85, 77, 80, 89, 73, 71, 90, 65, 66, 88], self.inv_key)
-        [4, 12, 5, 14, 14, 18, 21, 1, 14, 21, 2, 14, 15, 8, 13, 12]
         """
-        result: list = [0] * len(matrix)
-        for i in range(len(matrix)):
-            for j in range(len(digraph_vector)):
-                result[i] += matrix[i][j] * digraph_vector[j]
-            result[i] = int(result[i] % self.module)
+        if len(digraph_vector[0]) != len(matrix):
+            raise ValueError("The number of columns in the digraph vector must match the number of rows in the matrix.")
+
+        result: list[list] = [[0 for _ in range(len(matrix[0]))] for _ in range(len(digraph_vector))]
+        for i in range(len(digraph_vector)):
+            for j in range(len(matrix[0])):
+                for k in range(len(matrix)):
+                    result[i][j] += digraph_vector[i][k] * matrix[k][j]
+                result[i][j] %= self.module
         return result
 
     def encrypt(self, plaintext: str) -> str:
@@ -679,19 +674,16 @@ class MatrixEncryption(CryptoAlgorithm):
         """
         # Remove all non-alphabetic characters and convert to uppercase.
         plaintext = "".join([char.upper() for char in plaintext if char.isalpha()])
-        # Pad the plaintext to match the digraph size.
         padded_plaintext: str = self.padding_out_text(plaintext)
         ciphertext: list[str] = [""] * len(padded_plaintext)
 
         for i in range(0, len(padded_plaintext), self.digraph_size):
             digraph_plaintext: str = padded_plaintext[i : i + self.digraph_size]
             # Convert the digraph plaintext to a vector of ASCII values.
-            digraph_vector: list = self.convert_to_vector(digraph_plaintext)
+            digraph_vector: list[list] = self.convert_to_vector(digraph_plaintext)
             # Multiply the digraph vector by the key matrix.
             digraph_ciphertext: list = self.matrix_multiply(digraph_vector, self.key)
-            # Convert the digraph ciphertext to a string of characters.
-            encrypted_digraph: str = self.convert_to_block(digraph_ciphertext)
-            ciphertext[i : i + self.digraph_size] = encrypted_digraph
+            ciphertext[i : i + self.digraph_size] = self.convert_to_block(digraph_ciphertext)
 
         return "".join(ciphertext)
 
@@ -708,7 +700,7 @@ class MatrixEncryption(CryptoAlgorithm):
         for i in range(0, len(ciphertext), self.digraph_size):
             digraph_ciphertext: str = ciphertext[i : i + self.digraph_size]
             # Convert the digraph ciphertext to a vector of ASCII values.
-            digraph_vector: list = self.convert_to_vector(digraph_ciphertext)
+            digraph_vector: list[list] = self.convert_to_vector(digraph_ciphertext)
             # Multiply the digraph vector by the inverse key matrix.
             digraph_plaintext: list = self.matrix_multiply(digraph_vector, self.inv_key)
             plain_text[i : i + self.digraph_size] = self.convert_to_block(digraph_plaintext)
@@ -717,10 +709,21 @@ class MatrixEncryption(CryptoAlgorithm):
 
 
 class CryptoAlgorithmFactory:
+    """
+    Factory class for dynamically creating crypto algorithm instances.
+
+    This factory class provides a convenient way to create different crypto algorithm instances
+    """
+
     @staticmethod
     def create_algorithm(algorithm_name: str, **kwargs):
+        """
+        Create a crypto algorithm instance based on the specified algorithm name and optional arguments.
+        Returns:
+        - CryptoAlgorithm: An instance of the specified crypto algorithm.
+        """
         if algorithm_name == "shift":
-            shift = kwargs.get("shift", 0)
+            shift = int(kwargs.get("--shift", 3))
             return ShiftEncryption(shift)
         elif algorithm_name == "matrix":
             return MatrixEncryption()
@@ -734,8 +737,9 @@ def main():
     text = sys.argv[1]
     algorithm_name = sys.argv[2]
     operation = sys.argv[3]
+    kwargs = {str(sys.argv[i]): sys.argv[i + 1] for i in range(4, len(sys.argv) - 1)}
 
-    crypto_algorithm = CryptoAlgorithmFactory.create_algorithm(algorithm_name)
+    crypto_algorithm = CryptoAlgorithmFactory.create_algorithm(algorithm_name, **kwargs)
     if operation == "encrypt":
         encrypted_text = crypto_algorithm.encrypt(text)
         print(f"Encrypted text: {encrypted_text}")

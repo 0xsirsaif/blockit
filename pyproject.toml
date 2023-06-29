@@ -5,8 +5,24 @@ profile = "black"
 line-length = 120
 
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
 addopts = "--ignore=test_build.py"
+
+[tool.coverage.run]
+branch = true
+source = ["blockit", "tests"]
+omit = ["tests/fixtures/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "def __str__",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+  "if typing.TYPE_CHECKING:"
+]
 
 [build-system]
 # Minimum requirements for the build system to execute.
