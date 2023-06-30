@@ -28,4 +28,4 @@ RUN --mount=type=cache,target=/root/.cache \
 # Add app
 COPY . .
 
-CMD uvicorn blockit.api:app --reload --workers 1 --host 0.0.0.0 --port 8000
+CMD uvicorn blockit.reverse_encryption_api:app --reload --workers 1 --host 0.0.0.0 --port 8000
