@@ -1,6 +1,11 @@
+import httpx
 import pytest
 
-from blockit.crypto_algorithms import MatrixEncryption, ShiftEncryption
+from blockit.crypto_algorithms import (
+    MatrixEncryption,
+    ReverseEncryption,
+    ShiftEncryption,
+)
 
 
 class TestShiftEncryption:
@@ -99,3 +104,33 @@ class TestMatrixEncryption:
         matrix_encryption = MatrixEncryption()
         assert matrix_encryption.decrypt("XINEAACGNUNDOHLL") == "HELLO"
         assert matrix_encryption.decrypt("WDIHMGZEYIMFGOQS") == "WORLD"
+
+
+class TestReverseEncryption:
+    @pytest.fixture
+    def reverse_encryption(self, monkeypatch):
+        encrypt_url = "http://backendtask.robustastudio.com/encode"
+        decrypt_url = "http://backendtask.robustastudio.com/decode"
+        return ReverseEncryption(encrypt_url, decrypt_url)
+
+    def test_encrypt_successful(self, monkeypatch, reverse_encryption):
+        def _mock_post(url, **kwargs):
+            return httpx.Response(200, json={"encoded_text": "GFEDCBA"})
+
+        plain_text = "ABCDEFG"
+
+        monkeypatch.setattr(httpx.Client, "post", _mock_post)
+
+        encrypted_text = reverse_encryption.encrypt(plain_text)
+        assert encrypted_text == "GFEDCBA"
+
+    def test_decrypt_successful(self, monkeypatch, reverse_encryption):
+        def _mock_post(url, **kwargs):
+            return httpx.Response(200, json={"decoded_text": "ABCDEFG"})
+
+        cipher_text = "GFEDCBA"
+
+        monkeypatch.setattr(httpx.Client, "post", _mock_post)
+
+        decrypted_text = reverse_encryption.decrypt(cipher_text)
+        assert decrypted_text == "ABCDEFG"

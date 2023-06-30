@@ -2,6 +2,8 @@ import array
 import string
 from abc import ABC, abstractmethod
 
+import httpx
+
 
 class CryptoAlgorithm(ABC):
     @abstractmethod
@@ -707,6 +709,26 @@ class MatrixEncryption(CryptoAlgorithm):
         return "".join(plain_text)
 
 
+class ReverseEncryption(CryptoAlgorithm):
+    """
+    Reverse Encryption Algorithm.
+    """
+
+    def __init__(self, encrypt_url: str, decrypt_url: str):
+        self.encrypt_url = encrypt_url or "http://backendtask.robustastudio.com/encode"
+        self.decrypt_url = decrypt_url or "http://backendtask.robustastudio.com/decode"
+
+    def encrypt(self, plain_text: str) -> str:
+        headers = {"Content-Type": "application/json"}
+        response = httpx.post(self.encrypt_url, headers=headers, json={"text": plain_text})
+        return response.json().get("encoded_text", "")
+
+    def decrypt(self, cipher_text: str) -> str:
+        headers = {"Content-Type": "application/json"}
+        response = httpx.post(self.decrypt_url, headers=headers, json={"text": cipher_text})
+        return response.json().get("decoded_text", "")
+
+
 class CryptoAlgorithmFactory:
     """
     Factory class for dynamically creating crypto algorithm instances.
@@ -726,5 +748,9 @@ class CryptoAlgorithmFactory:
             return ShiftEncryption(shift)
         elif algorithm_name == "matrix":
             return MatrixEncryption()
+        elif algorithm_name == "reverse":
+            encrypt_url = "https://encryption-api-five.vercel.app/encode"
+            decrypt_url = "https://encryption-api-five.vercel.app/decode"
+            return ReverseEncryption(encrypt_url=encrypt_url, decrypt_url=decrypt_url)
         else:
             raise ValueError(f"Invalid algorithm name: {algorithm_name}")
