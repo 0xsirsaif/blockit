@@ -744,7 +744,7 @@ class CryptoAlgorithmFactory:
         - CryptoAlgorithm: An instance of the specified crypto algorithm.
         """
         if algorithm_name == "shift":
-            shift = int(kwargs.get("--shift", 3))
+            shift = int(kwargs.get("shift", 3))
             return ShiftEncryption(shift)
         elif algorithm_name == "matrix":
             return MatrixEncryption()
